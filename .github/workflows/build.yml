@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           # Linux Config
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             original_name: c4000-tool
             os_suffix: linux
           # Windows Config

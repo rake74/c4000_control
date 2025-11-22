@@ -1,3 +1,5 @@
 __pycache__/
 *.py[cod]
 *$py.class
+c4000_control.creds
+rules_*.txt

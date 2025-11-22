@@ -1,10 +1,13 @@
-name: Build Standalone Binaries
+name: Build and Release
 
 on:
   push:
     tags:
-      - 'v*'  # Triggers only when you push a tag like v1.0, v2.0
-    workflow_dispatch:
+      - 'v*'           # Triggers on tag creation.
+    workflow_dispatch: # Enable manual trigger.
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -13,14 +16,14 @@ jobs:
     strategy:
       matrix:
         include:
-          # Linux Build Settings
-          - os: ubuntu-latest
-            executable_name: c4000-tool
-            artifact_name: c4000-tool-linux
-          # Windows Build Settings
+          # Linux Config
+          - os: ubuntu-20.04
+            original_name: c4000-tool
+            os_suffix: linux
+          # Windows Config
           - os: windows-latest
-            executable_name: c4000-tool.exe
-            artifact_name: c4000-tool-windows
+            original_name: c4000-tool.exe
+            os_suffix: windows
 
     steps:
     - name: Checkout Code
@@ -36,14 +39,29 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
-    - name: Build with PyInstaller
-      # This builds the single file (--onefile)
+    - name: Build Binary
       run: |
-        pyinstaller --onefile --name ${{ matrix.executable_name }} c4000_control.py
+        # Build with the generic name first
+        pyinstaller --onefile --name ${{ matrix.original_name }} c4000_control.py
 
-    - name: Upload Artifacts
-      # This saves the file from the VM so you can download it
-      uses: actions/upload-artifact@v4
+    - name: Rename with Version
+      shell: bash
+      run: |
+        VERSION="${{ github.ref_name }}"
+        SUFFIX="${{ matrix.os_suffix }}"
+        ORIGINAL="dist/${{ matrix.original_name }}"
+        if [ "$SUFFIX" == "windows" ]; then
+          NEW_NAME="dist/c4000-tool-$SUFFIX-$VERSION.exe"
+        else
+          NEW_NAME="dist/c4000-tool-$SUFFIX-$VERSION"
+        fi
+        echo "Renaming $ORIGINAL to $NEW_NAME"
+        mv "$ORIGINAL" "$NEW_NAME"
+
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
-        name: ${{ matrix.artifact_name }}
-        path: dist/${{ matrix.executable_name }}
+        files: dist/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

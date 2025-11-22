@@ -1,0 +1,49 @@
+name: Build Standalone Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers only when you push a tag like v1.0, v2.0
+    workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Linux Build Settings
+          - os: ubuntu-latest
+            executable_name: c4000-tool
+            artifact_name: c4000-tool-linux
+          # Windows Build Settings
+          - os: windows-latest
+            executable_name: c4000-tool.exe
+            artifact_name: c4000-tool-windows
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Build with PyInstaller
+      # This builds the single file (--onefile)
+      run: |
+        pyinstaller --onefile --name ${{ matrix.executable_name }} c4000_control.py
+
+    - name: Upload Artifacts
+      # This saves the file from the VM so you can download it
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: dist/${{ matrix.executable_name }}

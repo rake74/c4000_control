@@ -6,16 +6,17 @@ This document outlines the architecture of the `c4000_control` tool. The project
 
 ```
 .
-├── c4000_control.py        # Executable Entry Point
-├── c4000_lib/              # Library Package (all logic)
+├── c4000_control.py           # Executable Entry Point
+├── c4000_lib/                 # Library Package (all logic)
 │   ├── __init__.py
-│   ├── cli.py              # 1. Command Layer
-│   ├── core.py             # 2. Communication Layer (Browser Emulation)
-│   ├── features/           # 3. Feature Logic Layer (State Enforcement)
+│   ├── cli.py                 # 1. Command Layer
+│   ├── core.py                # 2. Communication Layer (Browser Emulation)
+│   ├── features/              # 3. Feature Logic Layer
 │   │   ├── __init__.py
-│   │   ├── device_listing.py
-│   │   └── url_blocking.py
-│   └── utils.py            # 4. Utility Layer
+│   │   ├── config.py          #    - Backup & Restore
+│   │   ├── device_listing.py  #    - Device Listing
+│   │   └── url_blocking.py    #    - State Enforcement
+│   └── utils.py               # 4. Utility Layer
 ├── .gitignore
 ├── ARCHITECTURE.md
 ├── README.md
@@ -43,17 +44,16 @@ All of the tool's logic resides within this Python package.
 *   **Function**:
     *   **Browser Emulation**: Manages specific HTTP headers (`Origin`, `Referer`, `User-Agent`) and dynamically switches them based on the action (Login vs. Configuration) to pass the modem's CSRF security checks.
     *   **Traffic Control**: Enforces a global "Rate Limit" (default 2s) to prevent flooding the modem's CPU.
-    *   **Write Safety**: Enforces a strict **7-second pause** after every `POST` (Write) operation. This allows the modem's slow flash storage to commit changes before the next request, preventing database corruption.
-    *   **Smart Retries**: Automatically retries safe `GET` requests if the network hiccups, but **fails fast** on `POST` requests to prevent duplicate rules ("Double Post" bugs).
+    *   **Write Safety**: Enforces a strict **7-second pause** after every `POST` (Write) operation to prevent database corruption.
+    *   **Binary Handling**: Supports streaming file downloads (for backups) and multipart/form-data uploads (for restoring configurations).
 
 ##### 3. Feature Logic Layer (`features/`)
 
-*   **Responsibility**: Implements "Desired State" logic rather than simple command execution. **This is where the robustness lives.**
-*   **Function**: Each file (e.g., `url_blocking.py`) defines a class for a specific feature.
-    *   **Idempotency**: Instead of simply "Adding" a rule, it checks if the rule exists first. If it does, it does nothing.
-    *   **Verification**: After applying a change, it queries the modem again to verify the change was actually accepted.
-    *   **Self-Healing**: It can detect and remove duplicate rules caused by previous firmware glitches.
-    *   **Ghost Rule Protection**: In bulk operations (like `remove-all`), it tracks rules that refuse to be deleted and skips them to prevent infinite loops.
+*   **Responsibility**: Implements "Desired State" logic and specific feature workflows.
+*   **Function**: Each file defines a class for a specific feature area.
+    *   **`url_blocking.py`**: Implements idempotent rule management. Checks existence before adding, verifies removal, and self-heals duplicate rules.
+    *   **`config.py`**: Manages the Backup/Restore workflow. It handles file I/O, timestamp generation, and the specific multipart upload format required by the modem's restore endpoint.
+    *   **`device_listing.py`**: Parses the modem's host table to resolve Names/IPs to MAC addresses.
 
 ##### 4. Utility Layer (`utils.py`)
 

@@ -1,6 +1,6 @@
 # C4000 Control: CenturyLink Modem Management CLI
 
-`c4000_control` is a command-line interface (CLI) tool written in Python to manage the URL/website blocking functionality and query devices on CenturyLink C4000 series modems. It was developed and tested on a **C4000BZ** model.
+`c4000_control` is a command-line interface (CLI) tool written in Python to manage the URL/website blocking functionality, query devices, and handle configuration backups on CenturyLink C4000 series modems. It was developed and tested on a **C4000BZ** model.
 
 This script provides a robust, scriptable alternative to the modem's Web UI. It mimics a browser session (headers, timing, and origin checks) to bypass the firmware's flakiness and enforces strict timing to prevent database corruption.
 
@@ -10,12 +10,15 @@ This script provides a robust, scriptable alternative to the modem's Web UI. It 
     *   **Idempotent Operations**: "Add" commands verify existence first. "Remove" commands verify deletion.
     *   **Self-Healing**: Automatically detects and cleans up duplicate rules caused by firmware glitches.
     *   **Ghost Rule Protection**: Detects stuck rules that cannot be deleted and skips them to prevent infinite loops.
+*   **Configuration Management**:
+    *   **Backup**: Download the current modem configuration to a timestamped local file.
+    *   **Restore**: Upload a backup file to restore settings (automatically handles the required reboot).
+    *   **Versioning**: Automatically names backups with Model, Serial, and Timestamp.
 *   **Browser Emulation**: Sends exact `Origin` and `Referer` headers to prevent the modem from dropping connections (Anti-CSRF/security checks).
 *   **Flexible Targets**:
     *   Manage rules by **Hostname**, **IP Address**, or **MAC Address**.
     *   Apply rules to **all devices** or specific targets.
 *   **Batch Operations**: Add/Remove multiple rules via command line flags or text files.
-*   **Smart Configuration**: Automatic gateway detection and secure credential handling.
 
 ---
 
@@ -82,6 +85,31 @@ Displays all known devices on the local network.
 ./c4000_control.py device list
 ```
 
+### Configuration Commands (`config`)
+
+#### **`config list`**
+List all local backup files sorted by date.
+```bash
+./c4000_control.py config list
+```
+
+#### **`config backup`**
+Downloads the current configuration. Files are saved to the `config-backups/` directory with a filename format of `DB-<Model><Serial>_<Timestamp>.tar.gz`.
+```bash
+./c4000_control.py config backup
+```
+
+#### **`config restore`**
+Restores a configuration file.
+```bash
+# Restore the newest available backup (default)
+./c4000_control.py config restore
+
+# Restore a specific file
+./c4000_control.py config restore config-backups/DB-C4000BZ...tar.gz
+```
+*Warning: This operation will overwrite current settings and automatically reboot the modem.*
+
 ### URL Blocking Commands (`url`)
 
 #### **`url list`**
@@ -122,6 +150,29 @@ Safely wipes all URL blocking rules.
 ./c4000_control.py url remove-all
 ```
 *Note: If the modem refuses to delete a specific rule (a "ghost rule"), the script will detect it, log a warning, and proceed to remove the remaining rules.*
+
+---
+
+## Building a Standalone Binary
+
+You can compile this tool into a single executable file (no Python installation required for the end user).
+
+### Using GitHub Actions (Cross-Platform)
+This repository includes a workflow to automatically build binaries for **Windows** and **Linux**.
+1.  Push a tag starting with `v` (e.g., `v1.0.0`).
+2.  Go to the "Releases" page on GitHub to download the artifacts.
+
+### Using PyInstaller (Local Build)
+To build a binary for your current OS:
+1.  Install PyInstaller:
+    ```bash
+    pip install pyinstaller
+    ```
+2.  Build:
+    ```bash
+    pyinstaller --onefile --name c4000-tool c4000_control.py
+    ```
+3.  The executable will be in `dist/`.
 
 ---
 

@@ -97,9 +97,6 @@ class ModemControl:
                 self._log(f"Request failed (Attempt {attempt}/{max_retries}): {e}")
 
                 if attempt == max_retries:
-                    # For POST requests, or the final GET attempt, we bubble the error up.
-                    # The higher level logic will decide if it was a success or failure
-                    # by checking the state (idempotency).
                     raise ModemError(f"Communication failed: {e}")
 
                 # Only GET requests retry
@@ -112,26 +109,19 @@ class ModemControl:
     def login(self):
         """Establishes an authenticated session using correct Referer."""
         print("Logging in...")
-
-        # Set Referer for Login Page
         headers = {'Referer': f"{self.origin_url}/login.html"}
-
         try:
-            # Reset timer
             self.last_request_time = 0
             self._enforce_rate_limit()
-
             response = self.session.post(
                 f"{self.base_url}/cgi_action",
                 data={"username": self.username, "password": self.password},
                 headers=headers
             )
             self.last_request_time = time.time()
-
             if 'Session-Id' in self.session.cookies:
                 print("Login successful.")
                 return True
-
             print("Login failed. Check credentials.", file=sys.stderr)
             return False
         except requests.exceptions.RequestException as e:
@@ -139,14 +129,9 @@ class ModemControl:
             return False
 
     def get_request(self, object_path):
-        """
-        Sends a GET request.
-        """
+        """Sends a GET request."""
         self._log(f"Sending GET for Object: {object_path}")
-        # GET requests technically don't need the Referer as strictly,
-        # but let's use a generic one just in case.
         headers = {'Referer': f"{self.origin_url}/index.html"}
-
         response = self._send_request('GET', f"{self.base_url}/cgi_get",
                                       params={'Object': object_path},
                                       headers=headers)
@@ -160,21 +145,49 @@ class ModemControl:
             raise ModemError(f"Invalid response data from modem for {object_path}")
 
     def set_request(self, payload, post_write_delay=7.0):
-        """
-        Sends a SET request with the correct configuration Referer.
-        post_write_delay: Defaults to 7.0s to match browser UI spinner.
-        """
+        """Sends a SET request with the correct configuration Referer."""
         self._log(f"Sending SET with Payload: {payload}")
-
-        # Set Referer for Configuration Page
         headers = {'Referer': f"{self.origin_url}/configuring_applysettings.html"}
-
-        self._send_request('POST', f"{self.base_url}/cgi_set",
-                           data=payload,
-                           headers=headers)
-
+        self._send_request('POST', f"{self.base_url}/cgi_set", data=payload, headers=headers)
         if post_write_delay > 0:
             self._log(f"Write safety: Pausing {post_write_delay}s for firmware commit...")
             time.sleep(post_write_delay)
-
         return True
+
+    def send_download(self, payload, referer_path):
+        """Sends a POST request and returns the raw binary response (for Backups)."""
+        self._log(f"Sending Download Request with Payload: {payload}")
+        headers = {'Referer': f"{self.origin_url}/{referer_path}"}
+        return self._send_request('POST', f"{self.base_url}/cgi_action", data=payload, headers=headers)
+
+    def send_upload(self, files, referer_path, params=None, endpoint="cgi_action", post_write_delay=20.0):
+        """
+        Sends a multipart POST request (for Restores).
+        Allows targeting specific endpoints (like cgi_set) and URL parameters.
+        """
+        url = f"{self.base_url}/{endpoint}"
+        self._log(f"Sending Upload Request to {url}")
+        if params:
+            self._log(f"URL Parameters: {params}")
+
+        headers = {'Referer': f"{self.origin_url}/{referer_path}"}
+
+        self._enforce_rate_limit()
+        try:
+            # We invoke session.post directly to handle 'files' and 'params'
+            # without passing through the generic JSON/data wrappers.
+            response = self.session.post(
+                url,
+                files=files,
+                params=params,
+                headers=headers
+            )
+            self.last_request_time = time.time()
+            response.raise_for_status()
+
+            if post_write_delay > 0:
+                 self._log(f"Upload complete. Waiting {post_write_delay}s for processing...")
+                 time.sleep(post_write_delay)
+            return True
+        except requests.exceptions.RequestException as e:
+             raise ModemError(f"Upload failed: {e}")

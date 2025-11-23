@@ -3,3 +3,4 @@ __pycache__/
 *$py.class
 c4000_control.creds
 rules_*.txt
+config-backups/

@@ -29,6 +29,7 @@ from . import utils
 from .core import ModemControl, ModemError
 from .features.device_listing import DeviceListingFeature
 from .features.url_blocking import URLBlockingFeature
+from .features.config import ConfigFeature
 
 def parse_rules_from_file(filename):
     """Parses a device,url file and returns a list of tuples."""
@@ -60,10 +61,12 @@ def main():
 
     feature_subparsers = parser.add_subparsers(dest="feature", required=True, help="Feature to interact with.")
 
+    # --- DEVICE ---
     parser_device = feature_subparsers.add_parser("device", help="Commands for listing network devices.")
     device_action_parsers = parser_device.add_subparsers(dest="action", required=True, help="Action for the 'device' feature.")
     device_action_parsers.add_parser("list", help="List all known devices on the network.")
 
+    # --- URL BLOCKING ---
     parser_url = feature_subparsers.add_parser("url", help="Commands for managing URL blocking rules.")
     url_action_parsers = parser_url.add_subparsers(dest="action", required=True, help="Action for the 'url' feature.")
 
@@ -86,6 +89,17 @@ def main():
 
     url_action_parsers.add_parser("remove-all", help="Remove ALL URL blocking rules from the modem.")
 
+    # --- CONFIG BACKUP/RESTORE ---
+    parser_config = feature_subparsers.add_parser("config", help="Backup or Restore modem configuration.")
+    config_action_parsers = parser_config.add_subparsers(dest="action", required=True, help="Action for the 'config' feature.")
+
+    config_action_parsers.add_parser("list", help="List all available backups.")
+    config_action_parsers.add_parser("backup", help="Download current configuration to 'config-backups/'.")
+
+    restore_parser = config_action_parsers.add_parser("restore", help="Restore configuration (Requires Reboot).")
+    restore_parser.add_argument("file", nargs="?", help="Specific backup file to restore. Defaults to the newest file in 'config-backups/'.")
+
+
     args = parser.parse_args()
 
     username, password = utils.load_credentials()
@@ -93,7 +107,6 @@ def main():
         print("Username and password cannot be empty.", file=sys.stderr)
         sys.exit(1)
 
-    # Pass the user's delay preference as the minimum safety interval
     control = ModemControl(args.modem, username, password, debug=args.debug, min_interval=args.delay)
 
     if not control.login():
@@ -101,8 +114,10 @@ def main():
 
     print("-" * 30)
 
+    # Initialize Features
     device_feature = DeviceListingFeature(control)
     url_feature = URLBlockingFeature(control, device_feature)
+    config_feature = ConfigFeature(control)
 
     try:
         if args.feature == 'device':
@@ -136,6 +151,14 @@ def main():
                 url_feature.remove_by_id(args.rule_id)
             elif args.action == 'remove-all':
                 url_feature.remove_all()
+
+        elif args.feature == 'config':
+            if args.action == 'backup':
+                config_feature.backup()
+            elif args.action == 'restore':
+                config_feature.restore(args.file)
+            elif args.action == 'list':
+                config_feature.list_backups()
 
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")

@@ -110,6 +110,41 @@ Restores a configuration file.
 ```
 *Warning: This operation will overwrite current settings and automatically reboot the modem.*
 
+### DHCP Reservations (`dhcp`)
+
+#### **`dhcp list`**
+Displays all configured static DHCP reservations (MAC → IP).
+```bash
+./c4000_control.py dhcp list
+```
+
+#### **`dhcp reserve`**
+Assigns a static IP to a device by MAC address. The operation is idempotent: if the MAC already has a reservation it is updated in place; if the requested MAC/IP pair already exists, it is a no-op.
+```bash
+# Reserve by MAC address
+./c4000_control.py dhcp reserve --mac AA:BB:CC:DD:EE:FF --ip 192.168.0.50
+
+# Reserve using a known hostname (resolves to its MAC via the device table)
+./c4000_control.py dhcp reserve --device my-camera --ip 192.168.0.50
+
+# Preview a change without writing anything
+./c4000_control.py --dry-run dhcp reserve --mac AA:BB:CC:DD:EE:FF --ip 192.168.0.50
+```
+
+#### **`dhcp unreserve`**
+Removes a static reservation, matched by MAC or IP.
+```bash
+./c4000_control.py dhcp unreserve --ip 192.168.0.50
+./c4000_control.py dhcp unreserve --mac AA:BB:CC:DD:EE:FF
+```
+
+**Safety notes**:
+*   A full-config backup is taken automatically before each write. Skip it with `--no-backup`.
+*   The write is verified immediately after; if it does not confirm, an automatic rollback is attempted.
+*   **Lease behaviour**: on this firmware, adding or updating a reservation does not force the device off its current DHCP lease. The device will keep its existing IP until the lease renews or the modem reboots.
+
+---
+
 ### URL Blocking Commands (`url`)
 
 #### **`url list`**

@@ -128,9 +128,11 @@ class ConfigFeature:
                     f.write(chunk)
 
             print(f"Success: Backup saved to {filepath}")
+            return filepath
 
         except ModemError as e:
             print(f"Backup failed: {e}", file=sys.stderr)
+            return None
 
     def restore(self, filename=None):
         """Restores a configuration file, defaulting to the newest."""

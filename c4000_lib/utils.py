@@ -77,3 +77,15 @@ def load_credentials(creds_file="c4000_control.creds"):
     username = input("Enter modem admin username: ")
     password = getpass.getpass("Enter modem admin password: ")
     return username, password
+
+
+def resolve_device_to_mac(device_feature, identifier):
+    """Map a hostname/IP/MAC to a MAC via the device list. Returns MAC or None."""
+    devices, _ = device_feature.get_all()
+    needle = identifier.lower()
+    for d in devices or []:
+        for key in ("PhysAddress", "IPAddress", "HostName"):
+            val = (d.get(key) or "").lower()
+            if val and val == needle:
+                return d.get("PhysAddress", "")
+    return None

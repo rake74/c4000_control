@@ -1,0 +1,11 @@
+{
+  "Objects": [
+    {"ObjName": "Device.DHCPv4.Server.Pool.1.",
+     "Param": [
+       {"ParamName": "MinAddress", "ParamValue": "192.0.2.10"},
+       {"ParamName": "MaxAddress", "ParamValue": "192.0.2.200"},
+       {"ParamName": "IPRouters", "ParamValue": "192.0.2.1"},
+       {"ParamName": "SubnetMask", "ParamValue": "255.255.255.0"}
+     ]}
+  ]
+}

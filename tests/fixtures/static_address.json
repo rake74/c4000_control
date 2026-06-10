@@ -1,0 +1,22 @@
+{
+  "Objects": [
+    {"ObjName": "Device.DHCPv4.Server.Pool.1.StaticAddress.1.",
+     "Param": [
+       {"ParamName": "Alias", "ParamValue": "CPE-0001-CSD"},
+       {"ParamName": "Chaddr", "ParamValue": "02:00:00:00:00:01"},
+       {"ParamName": "Enable", "ParamValue": "true"},
+       {"ParamName": "X_GWS_DeviceIcon", "ParamValue": ""},
+       {"ParamName": "X_GWS_HostName", "ParamValue": "camera-one"},
+       {"ParamName": "Yiaddr", "ParamValue": "192.0.2.50"}
+     ]},
+    {"ObjName": "Device.DHCPv4.Server.Pool.1.StaticAddress.2.",
+     "Param": [
+       {"ParamName": "Alias", "ParamValue": "CPE-0002-CSD"},
+       {"ParamName": "Chaddr", "ParamValue": "02:00:00:00:00:02"},
+       {"ParamName": "Enable", "ParamValue": "true"},
+       {"ParamName": "X_GWS_DeviceIcon", "ParamValue": ""},
+       {"ParamName": "X_GWS_HostName", "ParamValue": "camera-two"},
+       {"ParamName": "Yiaddr", "ParamValue": "192.0.2.51"}
+     ]}
+  ]
+}

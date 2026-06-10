@@ -30,6 +30,7 @@ from .core import ModemControl, ModemError
 from .features.device_listing import DeviceListingFeature
 from .features.url_blocking import URLBlockingFeature
 from .features.config import ConfigFeature
+from .features.dhcp import DHCPReservationFeature
 
 def parse_rules_from_file(filename):
     """Parses a device,url file and returns a list of tuples."""
@@ -58,6 +59,7 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable detailed debug output.")
     parser.add_argument("--wait", action="store_true", help="Wait for user input before exiting.")
     parser.add_argument("--delay", type=float, default=2.0, help="Minimum interval between modem requests. Default: 2.0.")
+    parser.add_argument("--dry-run", action="store_true", help="Show intended DHCP writes without changing anything.")
 
     feature_subparsers = parser.add_subparsers(dest="feature", required=True, help="Feature to interact with.")
 
@@ -99,6 +101,23 @@ def main():
     restore_parser = config_action_parsers.add_parser("restore", help="Restore configuration (Requires Reboot).")
     restore_parser.add_argument("file", nargs="?", help="Specific backup file to restore. Defaults to the newest file in 'config-backups/'.")
 
+    # --- DHCP RESERVATIONS ---
+    parser_dhcp = feature_subparsers.add_parser("dhcp", help="Manage DHCP static reservations.")
+    dhcp_action_parsers = parser_dhcp.add_subparsers(dest="action", required=True, help="Action for the 'dhcp' feature.")
+    dhcp_action_parsers.add_parser("list", help="List DHCP reservations.")
+
+    dhcp_reserve = dhcp_action_parsers.add_parser("reserve", help="Add or update a reservation (MAC -> IP).")
+    res_group = dhcp_reserve.add_mutually_exclusive_group(required=True)
+    res_group.add_argument("--mac", help="Device MAC address.")
+    res_group.add_argument("--device", help="Device hostname/IP/MAC to resolve to a MAC.")
+    dhcp_reserve.add_argument("--ip", required=True, help="IP address to reserve.")
+    dhcp_reserve.add_argument("--no-backup", action="store_true", help="Skip pre-write config backup.")
+
+    dhcp_unreserve = dhcp_action_parsers.add_parser("unreserve", help="Remove a reservation by MAC or IP.")
+    unres_group = dhcp_unreserve.add_mutually_exclusive_group(required=True)
+    unres_group.add_argument("--mac", help="MAC of the reservation to remove.")
+    unres_group.add_argument("--ip", help="IP of the reservation to remove.")
+    dhcp_unreserve.add_argument("--no-backup", action="store_true", help="Skip pre-write config backup.")
 
     args = parser.parse_args()
 
@@ -118,6 +137,7 @@ def main():
     device_feature = DeviceListingFeature(control)
     url_feature = URLBlockingFeature(control, device_feature)
     config_feature = ConfigFeature(control)
+    dhcp_feature = DHCPReservationFeature(control, device_feature)
 
     try:
         if args.feature == 'device':
@@ -159,6 +179,21 @@ def main():
                 config_feature.restore(args.file)
             elif args.action == 'list':
                 config_feature.list_backups()
+
+        elif args.feature == 'dhcp':
+            if args.action == 'list':
+                dhcp_feature.list_reservations(debug=args.debug)
+            elif args.action == 'reserve':
+                mac = args.mac
+                if args.device:
+                    mac = utils.resolve_device_to_mac(device_feature, args.device)
+                    if not mac:
+                        print(f"Error: could not resolve device '{args.device}'.", file=sys.stderr); sys.exit(1)
+                dhcp_feature.reserve(mac, args.ip,
+                                     dry_run=args.dry_run, backup=not args.no_backup)
+            elif args.action == 'unreserve':
+                dhcp_feature.unreserve(mac=args.mac, ip=args.ip,
+                                       dry_run=args.dry_run, backup=not args.no_backup)
 
     except KeyboardInterrupt:
         print("\nOperation cancelled by user.")

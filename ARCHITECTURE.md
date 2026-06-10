@@ -15,6 +15,7 @@ This document outlines the architecture of the `c4000_control` tool. The project
 │   │   ├── __init__.py
 │   │   ├── config.py          #    - Backup & Restore
 │   │   ├── device_listing.py  #    - Device Listing
+│   │   ├── dhcp.py            #    - DHCP Static Reservations
 │   │   └── url_blocking.py    #    - State Enforcement
 │   └── utils.py               # 4. Utility Layer
 ├── .gitignore
@@ -54,6 +55,7 @@ All of the tool's logic resides within this Python package.
     *   **`url_blocking.py`**: Implements idempotent rule management. Checks existence before adding, verifies removal, and self-heals duplicate rules.
     *   **`config.py`**: Manages the Backup/Restore workflow. It handles file I/O, timestamp generation, and the specific multipart upload format required by the modem's restore endpoint.
     *   **`device_listing.py`**: Parses the modem's host table to resolve Names/IPs to MAC addresses.
+    *   **`dhcp.py`**: Manages DHCP static reservations (MAC → IP, no name field on this firmware). Pure helper functions (`normalize_mac`, `parse_reservations`, `parse_pool_range`, `parse_leases`, `validate_request`, `decide_action`) keep all parsing and decision logic testable in isolation. The `DHCPReservationFeature` class orchestrates reads and writes via `core.ModemControl`, implements feature-level `--dry-run` (prints the would-be payload without touching the modem), and performs a per-entry rollback on failed writes. Pre-write safety relies on `ConfigFeature.backup()`, which was updated to return the saved filepath (or `None`) so that `DHCPReservationFeature` can abort cleanly if the backup did not complete.
 
 ##### 4. Utility Layer (`utils.py`)
 

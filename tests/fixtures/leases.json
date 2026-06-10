@@ -1,0 +1,15 @@
+{
+  "Objects": [
+    {"ObjName": "Device.DHCPv4.Server.Pool.1.Client.1.",
+     "Param": [
+       {"ParamName": "Active", "ParamValue": "1"},
+       {"ParamName": "Chaddr", "ParamValue": "02:00:00:00:00:09"},
+       {"ParamName": "IPv4AddressNumberOfEntries", "ParamValue": "1"}
+     ]},
+    {"ObjName": "Device.DHCPv4.Server.Pool.1.Client.1.IPv4Address.1.",
+     "Param": [
+       {"ParamName": "IPAddress", "ParamValue": "192.0.2.80"},
+       {"ParamName": "X_LANTIQ_COM_Chaddr", "ParamValue": "02:00:00:00:00:09"}
+     ]}
+  ]
+}
